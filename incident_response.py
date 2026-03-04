@@ -487,8 +487,9 @@ class IncidentResponseDB:
         incident = self.get_incident(incident_id)
         if not incident:
             return None
-        ioc_entry = {"value": ioc, "type": ioc_type, "added_at": _now()}
-        if ioc_entry not in incident.iocs:
+        existing_values = {(i["value"], i["type"]) for i in incident.iocs}
+        if (ioc, ioc_type) not in existing_values:
+            ioc_entry = {"value": ioc, "type": ioc_type, "added_at": _now()}
             incident.iocs.append(ioc_entry)
         with self._connect() as conn:
             conn.execute(
@@ -579,7 +580,7 @@ class IncidentResponseDB:
                 "SELECT severity, COUNT(*) FROM incidents GROUP BY severity"
             ).fetchall()
             open_critical = conn.execute(
-                "SELECT COUNT(*) FROM incidents WHERE status != 'closed' AND severity = 'critical'"
+                "SELECT COUNT(*) FROM incidents WHERE status IN ('open', 'investigating') AND severity = 'critical'"
             ).fetchone()[0]
         return {
             "total": total,
